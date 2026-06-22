@@ -217,6 +217,7 @@ for name, decoder_hidden in AAE_CONFIGS.items():
     with torch.no_grad():
         x_hat = cloud_decoder(z).cpu().numpy()
 
+    x_hat_original = scaler.inverse_transform(x_hat)
     mse, mae = compute_mse_mae(X_test_np, x_hat)
     results[name] = (mse, mae)
     print(f"\n  {name}  (decoder: {[LATENT_DIM] + decoder_hidden + [INPUT_DIM]})")
