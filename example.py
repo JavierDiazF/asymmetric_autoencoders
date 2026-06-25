@@ -9,6 +9,15 @@ For each method we simulate the full sensor->cloud pipeline:
 PCA is included as a classical linear baseline.
 All results are compared in a final summary table.
 """
+"""
+NOTA:
+
+Utiliza el selu para mejorar/superar las limitaciones que tiene relu como la polarización por omisión (0) de los valores menores que 0
+SIn embargo tengo que mirar aún el tema de LeCun Normal Initialization que he visto que es con lo que mejor trabaja el selu.
+
+Con respecto al sigmoid, era la función de activación por defetcto de los AEs. 
+Sin embargo mirando funciones he visto que esta encaja más en clasificaciones binarias [0-1] y no en clasificaciones multiclase no sé si debería cambiarlo
+"""
 
 import pickle
 from pathlib import Path
@@ -49,7 +58,6 @@ AAE_CONFIGS = {
     "AAE-3": [45, 65, 85],
     "AAE-4": [40, 55, 70, 85],
 }
-
 
 # ── Synthetic data (replace with your real sensor data) ──────────────────────
 # Data is normalized to [0, 1] so the sigmoid output activation of the AAE
@@ -136,8 +144,8 @@ for name, decoder_hidden in AAE_CONFIGS.items():
 # only pca.components_ and pca.mean_ to the sensor (for the encode step).
 
 print(f"\n  Fitting PCA  (n_components={LATENT_DIM}) ...")
-pca = PCA(n_components=LATENT_DIM)
-pca.fit(X_train_np)
+pca = PCA(n_components=LATENT_DIM) # Reduce input dimension to LATENT dimension used in autoencoders
+pca.fit(X_train_np) # En esta línea dudo de si está bien hecho
 
 with open(WEIGHTS_DIR / "pca_model.pkl", "wb") as f:
     pickle.dump(pca, f)
