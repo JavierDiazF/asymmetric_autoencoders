@@ -23,9 +23,15 @@ class AsymmetricAutoencoder(nn.Module):
     Args:
         encoder: An Encoder instance.
         decoder: A Decoder instance.
+        channel: Optional module applied to the latent code before decoding
+            (e.g. PowerNormalization + AWGNChannel from channel.py). This is
+            what turns a plain reconstruction AE into the encoder -> channel
+            -> decoder communication AE described in Fig. 1b / 2a of the
+            survey. Left as None, behaviour is unchanged (direct
+            encoder -> decoder), which is what the IoT example uses.
     """
 
-    def __init__(self, encoder: Encoder, decoder: Decoder):
+    def __init__(self, encoder: Encoder, decoder: Decoder, channel: Optional[nn.Module] = None):
         super().__init__()
 
         if encoder.latent_dim != decoder.latent_dim:
@@ -36,6 +42,7 @@ class AsymmetricAutoencoder(nn.Module):
 
         self.encoder = encoder
         self.decoder = decoder
+        self.channel = channel
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         """Maps input to latent representation."""
@@ -46,9 +53,10 @@ class AsymmetricAutoencoder(nn.Module):
         return self.decoder(z)
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        """Returns (reconstruction, latent_code)."""
+        """Returns (reconstruction, latent_code). Latent code is pre-channel."""
         z = self.encode(x)
-        x_hat = self.decode(z)
+        y = self.channel(z) if self.channel is not None else z
+        x_hat = self.decode(y)
         return x_hat, z
 
     @property
@@ -89,11 +97,15 @@ def build_autoencoder(
     encoder_layer_norm: bool = False,
     decoder_layer_norm: bool = False,
     output_dim: Optional[int] = None,
+    channel: Optional[nn.Module] = None,
 ) -> AsymmetricAutoencoder:
     """
     Convenience factory that builds an AsymmetricAutoencoder from flat parameters.
 
     If output_dim is None, it defaults to input_dim (standard reconstruction).
+    If channel is None, encoder output feeds the decoder directly (IoT-style
+    compression). Pass a channel module (see channel.py) to get the
+    encoder -> channel -> decoder communication AE from the survey baseline.
 
     Example — deep encoder, shallow decoder:
         model = build_autoencoder(
@@ -130,4 +142,4 @@ def build_autoencoder(
         layer_norm=decoder_layer_norm,
     )
 
-    return AsymmetricAutoencoder(encoder, decoder)
+    return AsymmetricAutoencoder(encoder, decoder, channel=channel)

@@ -7,12 +7,6 @@ Workflow:
   3. Sensor node  -> loads only encoder weights -> compresses data -> transmits z
   4. Cloud server -> loads only decoder weights -> receives z     -> reconstructs x
 """
-"""
-NOTA:
-Este código solamente sirve para ejemplificar de forma sencilla como usar el autoencoder.
-Ahora mismo no sirve para hacer cálculos porque no se están preprocesando los datos para adaptarlos al sigmoid de salida del decoder.
-"""
-
 
 import torch
 from torch.utils.data import DataLoader, TensorDataset
