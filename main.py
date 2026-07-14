@@ -26,6 +26,7 @@ import split_input_data
 RESULTS_DIR = Path("results")
 SWEEP_A_CSV = RESULTS_DIR / "sweep_a_results.csv"
 SWEEP_B_CSV = RESULTS_DIR / "sweep_b_results.csv"
+SWEEP_C_CSV = RESULTS_DIR / "sweep_c_results.csv"
 CSV_PATH_FULL_DATA = Path("Datasets/Caples_Lake_N7_2014_2017.csv")
 CSV_PATH_TRAIN = Path("Datasets/Caples_Lake_N7_2014_2017_train.csv")
 CSV_PATH_VAL = Path("Datasets/Caples_Lake_N7_2014_2017_val.csv")
@@ -42,6 +43,11 @@ HIDDEN_LAYERS_SWEEP_A = 2
 INPUT_DIM_SWEEP_B = 100
 LATENT_DIM_SWEEP_B = 25
 HIDDEN_LAYERS_SWEEP_B = [1, 2, 3, 4, 5]
+
+## Sweep C: varying input_dim at a FIXED compression ratio
+INPUT_DIMS_SWEEP_C = [128, 256, 512, 1024]
+COMPRESSION_RATIOS_SWEEP_C = [2, 4, 8, 16, 32]
+HIDDEN_LAYERS_SWEEP_C = HIDDEN_LAYERS_SWEEP_A
 
 # Train parameters
 EPOCHS = 300
@@ -294,6 +300,54 @@ def run_sweep_b() -> None:
     # Save obtained results
     save_csv(rows, SWEEP_B_CSV)
 
+def run_sweep_c() -> None:
+    """Run sweep C: varying input_dim at a fixed compression ratio."""
+    print("=" * 70)
+    print(f"SWEEP C — input_dim with fixed compression ratio (hidden_layers fixed in {HIDDEN_LAYERS_SWEEP_C})")
+    print("=" * 70)
+
+    rows = list()
+    for input_dim in INPUT_DIMS_SWEEP_C:
+        # Slicing of input data to adjust it to current input dimension
+        X_train, X_val, X_test = get_train_val_test_splits(input_dim)
+        for target_ratio in COMPRESSION_RATIOS_SWEEP_C:
+            latent_dim = max(1, round(input_dim / target_ratio))
+            ratio = input_dim / latent_dim  # ratio real conseguido (no cuenta min/max/ref)
+            print(f"\nInput dim: {input_dim}, Latent dim: {latent_dim} (target ratio {target_ratio}:1, real ratio {ratio:.2f}:1)")
+            for seed in range(TRAIN_MODELS_N):
+                print(f"Training symmetric model with seed {seed}...")
+                model = train_one_config(X_train, X_val, input_dim, latent_dim, HIDDEN_LAYERS_SWEEP_C, asymmetric=False, seed=seed)
+                results_dict = test_one_config(model, X_test)
+                print(f"Test results: MSE={results_dict['mse_mean']:.6f}, MAE={results_dict['mae_mean']:.6f}")
+                rows.append({
+                    'symmetric': True,
+                    'input_dim': input_dim,
+                    'latent_dim': latent_dim,
+                    'target_ratio': target_ratio,
+                    'ratio': ratio,
+                    'hidden_layers': HIDDEN_LAYERS_SWEEP_C,
+                    'seed': seed,
+                    **results_dict
+                })
+
+                # Now it will run asymmetric models
+                print(f"Training asymmetric model with seed {seed}...")
+                model = train_one_config(X_train, X_val, input_dim, latent_dim, HIDDEN_LAYERS_SWEEP_C, asymmetric=True, seed=seed)
+                results_dict = test_one_config(model, X_test)
+                print(f"Test results: MSE={results_dict['mse_mean']:.6f}, MAE={results_dict['mae_mean']:.6f}")
+                rows.append({
+                    'symmetric': False,
+                    'input_dim': input_dim,
+                    'latent_dim': latent_dim,
+                    'target_ratio': target_ratio,
+                    'ratio': ratio,
+                    'hidden_layers': HIDDEN_LAYERS_SWEEP_C,
+                    'seed': seed,
+                    **results_dict
+                })
+    # Save obtained results
+    save_csv(rows, SWEEP_C_CSV)
+
 # ------------------------------ Save data ---------------------------------
 def save_csv(rows: List[dict], path: Path) -> None:
     df = pd.DataFrame(rows)
@@ -305,6 +359,7 @@ def main() -> None:
     RESULTS_DIR.mkdir(exist_ok=True)
     run_sweep_a()
     run_sweep_b()
+    run_sweep_c()
 
 if __name__ == "__main__":
     main()
