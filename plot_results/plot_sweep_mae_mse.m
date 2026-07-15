@@ -10,63 +10,59 @@ function plot_sweep_mae_mse(sweep, file_name)
 
     %Font size
     custom_fontsize = 8;
-    % Initialize markers
-    %markers = {'o', 's', '^', 'd', 'v', 'p', 'h', '*', 'x', '+'};
-    
-    % Initialize plot v
-    n_cols = 2; % We will plot MAE and MSE
+
+    % Initialize plot values
     inputDims = unique(sweep.input_dim);
     dimColors = lines(numel(inputDims));
-    %n_combinations = height(unique(sweepA(:,{'input_dim', 'latent_dim'})));
-    %colors = lines(n_combinations);
-
-    % Tiled layout
-    t = tiledlayout(1, n_cols, 'TileSpacing','compact', 'Padding','compact');
-    % Global title
-    sgtitle(t, sprintf('MSE and MAE vs ratio compression'), 'FontSize',custom_fontsize, 'FontWeight','normal');
-    % Manage global legend
-    global_legend_handles = gobjects(1, n_combinations);
-    legend_captured = false;
     
     % Get stats (mean and std)
-    summary_mse = groupsummary(sweep, {'input_dim', 'latent_dim', 'symmetric'}, {'mean', 'std'}, 'mse_mean')
-    summary_mae = groupsummary(sweep, {'input_dim', 'latent_dim', 'symmetric'}, {'mean', 'std'}, 'mae_mean')
+    summary = groupsummary(sweep, {'input_dim', 'latent_dim', 'symmetric'}, {'mean', 'std'}, {'mse_mean', 'mae_mean'});
     % En realidad, para calcular el ratio se deberian tener en cuenta 
     % los 3 bytes de ref, min y max necesarios para la desnormalizacion
     % Por ahora no los tengo en cuenta porque quiero ver cómo queda
-    summary_mse.ratio = summary_mse.input_dim ./ summary_mse.latent_dim;
-    summary_mae.ratio = summary_mae.input_dim ./ summary_mae.latent_dim;
+    summary.ratio = summary.input_dim ./ summary.latent_dim;
     
-    legend_entries = {};
-    % Get 
+    % Tiled layout MSE left, MAE right
+    t = tiledlayout(1, 2, 'TileSpacing','compact', 'Padding','compact');
+    axMSE = nexttile; hold(axMSE, 'on');
+    axMAE = nexttile; hold(axMAE, 'on');
+    % Global title
+    sgtitle(t, 'MSE and MAE vs ratio compression', 'FontSize',custom_fontsize, 'FontWeight','normal');
+    
+    % Manage global legend
+    legend_handles = gobjects(1, numel(inputDims)*2);
+    legend_entries = cell(1, numel(inputDims)*2);
+    idx = 0;
+    % For loop
     for inputdim_idx = 1:numel(inputDims)
         for symVal = [true, false]
-            if symVal
-                lineSpec = '-o';
-                labelSuffix = 'Sim.';
-            else
-                lineSpec = '--s';
-                labelSuffix = 'Asim';
-            end
-            % Get subset mse
-            ax = nexttile;
-            hold(ax, 'on');
-            subset = summary_mse(summary_mse.input_dim == inputDims(inputdim_idx) & summary_mse.symmetrict == symVal, :);
+            % Filter summary data
+            subset = summary(summary.input_dim == inputDims(inputdim_idx) & summary.symmetric == symVal, :);
+            subset = sortrows(subset, 'ratio');
             if isempty(subset)
                 continue;
             end
-            subset = sortrows(subset, 'ratio');
+            if symVal
+                lineSpec = '-o'; labelSuffix = 'Symm.';
+            else
+                lineSpec = '--s'; labelSuffix = 'Asymm';
+            end
+            % Get subset mse
+            h = errorbar(axMSE, subset.ratio, subset.mean_mse_mean, subset.std_mse_mean, lineSpec, 'Color', dimColors(inputdim_idx, :), 'MarkerFaceColor',dimColors(inputdim_idx, :), 'LineWidth', 1.2, 'MarkerSize', 4);
+            errorbar(axMAE, subset.ratio, subset.mean_mae_mean, subset.std_mae_mean, lineSpec, 'Color', dimColors(inputdim_idx, :), 'MarkerFaceColor',dimColors(inputdim_idx, :), 'LineWidth', 1.2, 'MarkerSize', 4);
             
-            errorbar(subset.ratio, subset.(meanCol), subset.(stdCol), lineSpec, 'Color', dimColors(inputdim_idx, :), 'LineWidth', 1.5, 'MarkerFaceColor',dimColors(inputdim_idx, :), 'MarkerSize', 5);
-            legend_entries{end + 1} = sprintf('input\\_dim=%d, %s', inputDims(inputdim_idx), labelSuffix);
-
+            idx = idx +1;
+            legend_handles(idx) = h;
+            legend_entries{idx} = sprintf('=%d, %s', inputDims(inputdim_idx), labelSuffix);
         end
     end
-    hold off;
-    xlabel('Compresion ratio');
-    ylabel()
+    hold(axMSE, 'off'); hold(axMAE, 'off');
+    xlabel(axMSE, 'Compression ratio'); ylabel(axMSE, 'MSE (°C^2)');
+    xlabel(axMAE, 'Compression ratio'); ylabel(axMAE, 'MAE (°C)');
+    set(axMSE, 'FontSize', custom_fontsize);
+    set(axMAE, 'FontSize', custom_fontsize);
     % Leyenda global fuera, abajo
-    lgd = legend(global_legend_handles, global_legend_entries, 'Orientation', 'horizontal', 'FontSize',custom_fontsize, 'Box','off', 'NumColumns',ceil(n_combinations/2));
+    lgd = legend(legend_handles(1:idx), legend_entries(1:idx), 'Orientation', 'horizontal', 'FontSize',custom_fontsize, 'Box','off', 'NumColumns',ceil(idx/2));
     lgd.Layout.Tile = 'south';
     lgd.ItemTokenSize = [8 6];
 
