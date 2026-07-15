@@ -13,7 +13,7 @@
 
 clear; clc; close all;
 
-RESULTS_DIR = 'results';
+RESULTS_DIR = '../results/azure_results';
 ENERGY_PJ_PER_MAC = 4.6;   % Horowitz, ISSCC 2014, 45nm float32 mult+add (pJ/MAC)
 
 COLOR_SYM  = [0.00, 0.45, 0.74];   % azul   -> simetrico
@@ -24,9 +24,11 @@ COLOR_ASYM = [0.85, 0.33, 0.10];   % naranja -> asimetrico
 %% ------------------------------------------------------------------
 sweepA = readtable(fullfile(RESULTS_DIR, 'sweep_a_results.csv'));
 sweepB = readtable(fullfile(RESULTS_DIR, 'sweep_b_results.csv'));
+sweepC = readtable(fullfile(RESULTS_DIR, 'sweep_a_results.csv'));
 
 sweepA.symmetric = parseBoolColumn(sweepA.symmetric);
 sweepB.symmetric = parseBoolColumn(sweepB.symmetric);
+sweepC.symmetric = parseBoolColumn(sweepC.symmetric);
 
 %% ------------------------------------------------------------------
 %  Figura 1 y 2: Sweep A -- MSE y MAE vs ratio de compresion,
@@ -39,6 +41,17 @@ plotSweepAMetric(sweepA, inputDims, 'mse_mean', 'MSE (°C^2)', ...
 
 plotSweepAMetric(sweepA, inputDims, 'mae_mean', 'MAE (°C)', ...
     'Sweep A: MAE vs ratio de compresion', COLOR_SYM, COLOR_ASYM);
+%% ------------------------------------------------------------------
+%  Figura 1 y 2: Sweep C -- MSE y MAE vs ratio de compresion,
+%  una subgrafica por input_dim
+%% ------------------------------------------------------------------
+inputDims = unique(sweepC.input_dim);
+
+plotSweepAMetric(sweepC, inputDims, 'mse_mean', 'MSE (°C^2)', ...
+    'Sweep C: MSE vs ratio de compresion', COLOR_SYM, COLOR_ASYM);
+
+plotSweepAMetric(sweepC, inputDims, 'mae_mean', 'MAE (°C)', ...
+    'Sweep C: MAE vs ratio de compresion', COLOR_SYM, COLOR_ASYM);
 
 %% ------------------------------------------------------------------
 %  Figura 3: Sweep B -- energia (encoder y decoder por separado) vs
