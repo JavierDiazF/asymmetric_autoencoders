@@ -117,8 +117,7 @@ function plotSweepAMetric(sweepA, inputDims, valueVar, yLabelStr, figTitle, colo
         nexttile;
         thisDim = sweepA(sweepA.input_dim == inputDims(k), :);
 
-        summaryT = groupsummary(thisDim, {'latent_dim', 'symmetric'}, ...
-            {'mean', 'std'}, valueVar);
+        summaryT = groupsummary(thisDim, {'latent_dim', 'symmetric'}, {'mean', 'std'}, valueVar);
         summaryT.ratio = inputDims(k) ./ (summaryT.latent_dim + 3);
 
         plotGroupedErrorbar(summaryT, 'ratio', valueVar, colorSym, colorAsym);
