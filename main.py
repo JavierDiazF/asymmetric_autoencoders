@@ -56,7 +56,7 @@ TRAIN_STRIDE = [10, 27, 33] # Step between windows made primes to get more data 
 # Data size
 #N_TRAIN, N_VAL, N_TEST = 10000, 2000, 2000
 # Trained models
-TRAIN_MODELS_N = 10
+TRAIN_MODELS_N = 50
 
 # Device optimization
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -68,10 +68,13 @@ def get_window_starts(length: int, window_size: int, strides: list) -> list:
         if stride <= 0:
             stride = window_size
         aux = list(range(1, length, stride))
+        print(f"stride: {stride}, length: {length}, window_size: {window_size}")
+        #print("aux: ", aux)
         while aux[-1] + window_size > length:
             aux.pop()
         starts += aux
     starts = list(dict.fromkeys(starts))
+    #print("starts: ", starts)
     np.random.shuffle(starts)
     return starts
 
