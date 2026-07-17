@@ -27,6 +27,7 @@ RESULTS_DIR = Path("results")
 SWEEP_A_CSV = RESULTS_DIR / "sweep_a_results.csv"
 SWEEP_B_CSV = RESULTS_DIR / "sweep_b_results.csv"
 SWEEP_C_CSV = RESULTS_DIR / "sweep_c_results.csv"
+SWEEP_D_CSV = RESULTS_DIR / "sweep_d_results.csv"
 CSV_PATH_FULL_DATA = Path("Datasets/Caples_Lake_N7_2014_2017.csv")
 CSV_PATH_TRAIN = Path("Datasets/Caples_Lake_N7_2014_2017_train.csv")
 CSV_PATH_VAL = Path("Datasets/Caples_Lake_N7_2014_2017_val.csv")
@@ -49,6 +50,11 @@ INPUT_DIMS_SWEEP_C = [128, 256, 512, 1024]
 COMPRESSION_RATIOS_SWEEP_C = [2, 4, 8, 16, 32]
 HIDDEN_LAYERS_SWEEP_C = HIDDEN_LAYERS_SWEEP_A
 
+## Sweep D: varying ratio at fixed input dim
+INPUT_DIM_SWEEP_D = 256
+LATENT_DIMS_SWEEP_D = [2, 4, 8, 16, 32, 64, 128]
+HIDDEN_LAYERS_SWEEP_D = HIDDEN_LAYERS_SWEEP_A
+
 # Train parameters
 EPOCHS = 300
 PATIENCE = 15
@@ -68,7 +74,7 @@ def get_window_starts(length: int, window_size: int, strides: list) -> list:
         if stride <= 0:
             stride = window_size
         aux = list(range(1, length, stride))
-        print(f"stride: {stride}, length: {length}, window_size: {window_size}")
+        #print(f"stride: {stride}, length: {length}, window_size: {window_size}")
         #print("aux: ", aux)
         while aux[-1] + window_size > length:
             aux.pop()
@@ -351,6 +357,53 @@ def run_sweep_c() -> None:
     # Save obtained results
     save_csv(rows, SWEEP_C_CSV)
 
+def run_sweep_d() -> None:
+    """Run sweep D: varying ratio at a fixed input dim."""
+    print("=" * 70)
+    print(f"SWEEP D — Input dim fixed with different ratio (hidden_layers fixed in {HIDDEN_LAYERS_SWEEP_D})")
+    print("=" * 70)
+
+    rows = list()
+    input_dim = INPUT_DIM_SWEEP_D
+    X_train, X_val, X_test = get_train_val_test_splits(input_dim)
+    for latent_dim in LATENT_DIMS_SWEEP_D:
+        #target_ratio = input_dim / latent_dim
+        ratio = input_dim / latent_dim  # ratio real conseguido (no cuenta min/max/ref)
+        print(f"\nInput dim: {input_dim}, Latent dim: {latent_dim} (ratio {ratio:.2f}:1)")
+        for seed in range(TRAIN_MODELS_N):
+                print(f"Training symmetric model with seed {seed}...")
+                model = train_one_config(X_train, X_val, input_dim, latent_dim, HIDDEN_LAYERS_SWEEP_D, asymmetric=False, seed=seed)
+                results_dict = test_one_config(model, X_test)
+                print(f"Test results: MSE={results_dict['mse_mean']:.6f}, MAE={results_dict['mae_mean']:.6f}")
+                rows.append({
+                    'symmetric': True,
+                    'input_dim': input_dim,
+                    'latent_dim': latent_dim,
+                    #'target_ratio': target_ratio,
+                    'ratio': ratio,
+                    'hidden_layers': HIDDEN_LAYERS_SWEEP_D,
+                    'seed': seed,
+                    **results_dict
+                })
+
+                # Now it will run asymmetric models
+                print(f"Training asymmetric model with seed {seed}...")
+                model = train_one_config(X_train, X_val, input_dim, latent_dim, HIDDEN_LAYERS_SWEEP_D, asymmetric=True, seed=seed)
+                results_dict = test_one_config(model, X_test)
+                print(f"Test results: MSE={results_dict['mse_mean']:.6f}, MAE={results_dict['mae_mean']:.6f}")
+                rows.append({
+                    'symmetric': False,
+                    'input_dim': input_dim,
+                    'latent_dim': latent_dim,
+                    #'target_ratio': target_ratio,
+                    'ratio': ratio,
+                    'hidden_layers': HIDDEN_LAYERS_SWEEP_D,
+                    'seed': seed,
+                    **results_dict
+                })
+    # Save obtained results
+    save_csv(rows, SWEEP_D_CSV)
+
 # ------------------------------ Save data ---------------------------------
 def save_csv(rows: List[dict], path: Path) -> None:
     df = pd.DataFrame(rows)
@@ -363,6 +416,7 @@ def main() -> None:
     run_sweep_a()
     run_sweep_b()
     run_sweep_c()
+    run_sweep_d()
 
 if __name__ == "__main__":
     main()
