@@ -49,7 +49,7 @@ function plot_sweep_hidden_layers(sweep, filename, mode)
     rightMeanCol = ['mean_' rightVar]; rightStdCol = ['std_' rightVar];
 
     legend_handles = gobjects(1, 2);
-    legend_entries = {'Symmetric', 'Asymmetric'};
+    legend_entries = {'Symmetric (AE)', 'Asymmetric (AAE)'};
     labels = [true, false];
     colors = {COLOR_SYM, COLOR_ASYM};
 
@@ -62,11 +62,26 @@ function plot_sweep_hidden_layers(sweep, filename, mode)
         legend_handles(i) = h;
     end
     hold(axLeft, 'off'); hold(axRight, 'off');
-
-    xlabel(axLeft, 'Number of hidden layers');  ylabel(axLeft, leftLabel);
-    xlabel(axRight, 'Number of hidden layers'); ylabel(axRight, rightLabel);
+    
+    % Create xticks 
+    hiddenLayerVals = unique(summary.hidden_layers);
+    %tickLabels = ['AE-1\newlineAAE-1'; 'AE-2\newlineAAE-2'; 'AE-3\newlineAAE-3'; 'AE-4\newlineAAE-4'; 'AE-5\newlineAAE-5'];
+    tickLabels = arrayfun(@(x) sprintf('AE-%d\\newlineAAE-%d', x, x), hiddenLayerVals, 'UniformOutput', false);
+    %tickLabels = arrayfun(@(x) {sprintf('AE-%d', x), sprintf('AAE-%d', x)}, hiddenLayerVals, 'UniformOutput', false);
+    %disp(tickLabels)
+    %xlabel(axLeft, 'Type of Autoencoder'); 
+    ylabel(axLeft, leftLabel);
+    %xlabel(axRight, 'Type of Autoencoder'); 
+    %ylabel(axRight, rightLabel);
+    xticks(axLeft, hiddenLayerVals);  axLeft.XTickLabel = tickLabels; xtickangle(axLeft, 0);
+    xticks(axRight, hiddenLayerVals);  axRight.XTickLabel = tickLabels; xtickangle(axRight, 0);
+    axLeft.TickLabelInterpreter = 'tex';
+    axRight.TickLabelInterpreter = 'tex';
     set(axLeft, 'FontSize', custom_fontsize);
     set(axRight, 'FontSize', custom_fontsize);
+
+    axLeft.XAxis.FontSize = custom_fontsize - 2;
+    axRight.XAxis.FontSize = custom_fontsize - 2;
 
     lgd = legend(legend_handles, legend_entries, 'Orientation', 'horizontal','FontSize', custom_fontsize, 'Box', 'off', 'NumColumns', 2);
     lgd.Layout.Tile = 'south';
